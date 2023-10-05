@@ -113,7 +113,9 @@ def get_controlnets_path(controlnet_list):
         return None
     return ["lllyasviel/sd-controlnet-" + controlnet for controlnet in controlnet_list]
 
-def get_path(version, pipeline, controlnet=None):
+def get_path(version, pipeline, controlnet=None, hf_repo_path=""):
+    if hf_repo_path != "":
+        return hf_repo_path
 
     if controlnet is not None:
         return ["lllyasviel/sd-controlnet-" + modality for modality in controlnet]
@@ -255,7 +257,8 @@ class BaseModel():
         max_batch_size=16,
         text_maxlen=77,
         embedding_dim=768,
-        controlnet=None
+        controlnet=None,
+        hf_repo_path="",
     ):
 
         self.name = self.__class__.__name__
@@ -266,6 +269,10 @@ class BaseModel():
         self.device = device
         self.verbose = verbose
         self.path = get_path(version, pipeline, controlnet)
+        
+        self.hf_repo_path = hf_repo_path
+        if self.hf_repo_path != "":
+            self.path = self.hf_repo_path
 
         self.fp16 = fp16
 
@@ -348,9 +355,10 @@ class CLIP(BaseModel):
         max_batch_size,
         embedding_dim,
         output_hidden_states=False,
-        subfolder="text_encoder"
+        subfolder="text_encoder",
+        hf_repo_path="",
     ):
-        super(CLIP, self).__init__(version, pipeline, hf_token, device=device, verbose=verbose, max_batch_size=max_batch_size, embedding_dim=embedding_dim)
+        super(CLIP, self).__init__(version, pipeline, hf_token, device=device, verbose=verbose, max_batch_size=max_batch_size, embedding_dim=embedding_dim, hf_repo_path=hf_repo_path)
         self.subfolder = subfolder
 
         # Output the final hidden state
@@ -360,10 +368,12 @@ class CLIP(BaseModel):
     def get_model(self, framework_model_dir, torch_inference=''):
         clip_model_dir = get_checkpoint_dir(framework_model_dir, self.version, self.pipeline, self.subfolder, torch_inference)
         if not os.path.exists(clip_model_dir):
+            print("[I] Load CLIP pytorch model from: {}".format(self.path))
             model = CLIPTextModel.from_pretrained(self.path,
                 subfolder=self.subfolder,
                 use_safetensors=self.hf_safetensor,
                 use_auth_token=self.hf_token).to(self.device)
+                
             model.save_pretrained(clip_model_dir)
         else:
             print(f"[I] Load CLIP pytorch model from: {clip_model_dir}")
@@ -423,8 +433,8 @@ class CLIP(BaseModel):
         opt.info(self.name + ': finished')
         return opt_onnx_graph
 
-def make_CLIP(version, pipeline, hf_token, device, verbose, max_batch_size, output_hidden_states=False, subfolder="text_encoder"):
-    return CLIP(version, pipeline, hf_token, device=device, verbose=verbose, max_batch_size=max_batch_size, embedding_dim=get_clip_embedding_dim(version, pipeline), output_hidden_states=output_hidden_states, subfolder=subfolder)
+def make_CLIP(version, pipeline, hf_token, device, verbose, max_batch_size, output_hidden_states=False, subfolder="text_encoder", hf_repo_path=""):
+    return CLIP(version, pipeline, hf_token, device=device, verbose=verbose, max_batch_size=max_batch_size, embedding_dim=get_clip_embedding_dim(version, pipeline), output_hidden_states=output_hidden_states, subfolder=subfolder, hf_repo_path=hf_repo_path)
 
 
 class CLIPWithProj(CLIP):
@@ -524,9 +534,10 @@ class UNet(BaseModel):
         controlnet=None,
         lora_weights=None,
         lora_scale=1,
+        hf_repo_path="",
     ):
 
-        super(UNet, self).__init__(version, pipeline, hf_token, fp16=fp16, device=device, verbose=verbose, max_batch_size=max_batch_size, text_maxlen=text_maxlen, embedding_dim=get_unet_embedding_dim(version, pipeline))
+        super(UNet, self).__init__(version, pipeline, hf_token, fp16=fp16, device=device, verbose=verbose, max_batch_size=max_batch_size, text_maxlen=text_maxlen, embedding_dim=get_unet_embedding_dim(version, pipeline), hf_repo_path=hf_repo_path)
         self.subfolder = 'unet'
         self.unet_dim = unet_dim
         self.controlnet = controlnet
@@ -649,11 +660,11 @@ class UNet(BaseModel):
                 torch.randn(len(self.controlnet), dtype=dtype, device=self.device)
             )
 
-def make_UNet(version, pipeline, hf_token, device, verbose, max_batch_size, controlnet=None, lora_weights=None, lora_scale=1):
+def make_UNet(version, pipeline, hf_token, device, verbose, max_batch_size, controlnet=None, lora_weights=None, lora_scale=1, hf_repo_path=""):
     return UNet(version, pipeline, hf_token, fp16=True, device=device, verbose=verbose,
             max_batch_size=max_batch_size, unet_dim=(9 if pipeline.is_inpaint() else 4),
             controlnet=get_controlnets_path(controlnet), lora_weights=lora_weights,
-            lora_scale=lora_scale)
+            lora_scale=lora_scale, hf_repo_path=hf_repo_path)
 
 class UNetXL(BaseModel):
     def __init__(self,
@@ -669,8 +680,9 @@ class UNetXL(BaseModel):
         time_dim=6,
         lora_weights=None,
         lora_scale=1,
+        hf_repo_path="",
     ):
-        super(UNetXL, self).__init__(version, pipeline, hf_token, fp16=fp16, device=device, verbose=verbose, max_batch_size=max_batch_size, text_maxlen=text_maxlen, embedding_dim=get_unet_embedding_dim(version, pipeline))
+        super(UNetXL, self).__init__(version, pipeline, hf_token, fp16=fp16, device=device, verbose=verbose, max_batch_size=max_batch_size, text_maxlen=text_maxlen, embedding_dim=get_unet_embedding_dim(version, pipeline), hf_repo_path=hf_repo_path)
         self.subfolder = 'unet'
         self.unet_dim = unet_dim
         self.time_dim = time_dim
@@ -748,10 +760,10 @@ class UNetXL(BaseModel):
             }
         )
 
-def make_UNetXL(version, pipeline, hf_token, device, verbose, max_batch_size, lora_weights=None, lora_scale=1):
+def make_UNetXL(version, pipeline, hf_token, device, verbose, max_batch_size, lora_weights=None, lora_scale=1, hf_repo_path=""):
     return UNetXL(version, pipeline, hf_token, fp16=True,  device=device, verbose=verbose,
                 max_batch_size=max_batch_size, unet_dim=4, time_dim=(5 if pipeline.is_sd_xl_refiner() else 6),
-                lora_weights=lora_weights, lora_scale=lora_scale)
+                lora_weights=lora_weights, lora_scale=lora_scale, hf_repo_path=hf_repo_path)
 
 class VAE(BaseModel):
     def __init__(self,
@@ -761,8 +773,9 @@ class VAE(BaseModel):
         device,
         verbose,
         max_batch_size,
+        hf_repo_path="",
     ):
-        super(VAE, self).__init__(version, pipeline, hf_token, device=device, verbose=verbose, max_batch_size=max_batch_size)
+        super(VAE, self).__init__(version, pipeline, hf_token, device=device, verbose=verbose, max_batch_size=max_batch_size, hf_repo_path=hf_repo_path)
         self.subfolder = 'vae'
 
     def get_model(self, framework_model_dir, torch_inference=''):
@@ -812,8 +825,8 @@ class VAE(BaseModel):
         return torch.randn(batch_size, 4, latent_height, latent_width, dtype=torch.float32, device=self.device)
 
 
-def make_VAE(version, pipeline, hf_token, device, verbose, max_batch_size):
-    return VAE(version, pipeline, hf_token, device=device, verbose=verbose, max_batch_size=max_batch_size)
+def make_VAE(version, pipeline, hf_token, device, verbose, max_batch_size, hf_repo_path=""):
+    return VAE(version, pipeline, hf_token, device=device, verbose=verbose, max_batch_size=max_batch_size, hf_repo_path=hf_repo_path)
 
 class TorchVAEEncoder(torch.nn.Module):
     def __init__(self, version, pipeline, hf_token, device, path, framework_model_dir, hf_safetensor=False):
@@ -841,8 +854,9 @@ class VAEEncoder(BaseModel):
         device,
         verbose,
         max_batch_size,
+        hf_repo_path="",
     ):
-        super(VAEEncoder, self).__init__(version, pipeline, hf_token, device=device, verbose=verbose, max_batch_size=max_batch_size)
+        super(VAEEncoder, self).__init__(version, pipeline, hf_token, device=device, verbose=verbose, max_batch_size=max_batch_size, hf_repo_path=hf_repo_path)
 
     def get_model(self, framework_model_dir, torch_inference=''):
         vae_encoder = TorchVAEEncoder(self.version, self.pipeline, self.hf_token, self.device, self.path, framework_model_dir, hf_safetensor=self.hf_safetensor)
@@ -883,8 +897,8 @@ class VAEEncoder(BaseModel):
         self.check_dims(batch_size, image_height, image_width)
         return torch.randn(batch_size, 3, image_height, image_width, dtype=torch.float32, device=self.device)
 
-def make_VAEEncoder(version, pipeline, hf_token, device, verbose, max_batch_size):
-    return VAEEncoder(version, pipeline, hf_token, device=device, verbose=verbose, max_batch_size=max_batch_size)
+def make_VAEEncoder(version, pipeline, hf_token, device, verbose, max_batch_size, hf_repo_path=""):
+    return VAEEncoder(version, pipeline, hf_token, device=device, verbose=verbose, max_batch_size=max_batch_size, hf_repo_path = hf_repo_path)
 
 def make_tokenizer(version, pipeline, hf_token, framework_model_dir, subfolder="tokenizer"):
     tokenizer_model_dir = get_checkpoint_dir(framework_model_dir, version, pipeline.name, subfolder, '')
