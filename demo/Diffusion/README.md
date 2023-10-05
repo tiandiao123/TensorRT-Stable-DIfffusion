@@ -126,18 +126,29 @@ Run the below command to generate an image with Stable Diffusion XL
 
 ```bash
 python3 demo_txt2img_xl.py "a photo of an astronaut riding a horse on mars" --hf-token=$HF_TOKEN --version=xl-1.0
+
+# or if you have your own model-path of hugging face
+python3 demo_txt2img_xl.py "a photo of an astronaut riding a horse on mars" --hf-token=$HF_TOKEN --hf-repo-path=$HF_REPO_NAME_OF_YOURS --version=xl-1.0
 ```
 
 The optional refiner model may be enabled by specifying `--enable-refiner` and separate directories for storing refiner onnx and engine files using `--onnx-refiner-dir` and `--engine-refiner-dir` respectively.
 
 ```bash
 python3 demo_txt2img_xl.py "a photo of an astronaut riding a horse on mars" --hf-token=$HF_TOKEN --version=xl-1.0 --enable-refiner --onnx-refiner-dir=onnx-refiner --engine-refiner-dir=engine-refiner
+
+# or if you have your own model-path of hugging face
+
+python3 demo_txt2img_xl.py "a photo of an astronaut riding a horse on mars" --hf-token=$HF_TOKEN --version=xl-1.0 --enable-refiner --onnx-refiner-dir=onnx-refiner --engine-refiner-dir=engine-refiner --hf-repo-path=$HF_REPO_NAME_OF_YOURS
+
 ```
 
 ### Generate an image guided by a text prompt, and using specified LoRA model weight updates
 
 ```bash
 python3 demo_txt2img.py "A pokemon with green eyes and red legs." --hf-token=$HF_TOKEN --lora-weights="sayakpaul/sd-model-finetuned-lora-t4" --lora-scale=1.0
+
+# if you have your own hf-repo-path
+python3 demo_txt2img.py "A pokemon with green eyes and red legs." --hf-token=$HF_TOKEN --lora-weights="sayakpaul/sd-model-finetuned-lora-t4" --hf-repo-path "stabilityai/stable-diffusion-2-1" --lora-scale=1.0
 ```
 
 ### Common usage options

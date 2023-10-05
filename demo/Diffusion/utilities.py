@@ -1663,6 +1663,7 @@ def add_arguments(parser):
 
     # Framework model ckpt
     parser.add_argument('--framework-model-dir', default='pytorch_model', help="Directory for HF saved models")
+    parser.add_argument('--hf-repo-path', default=None, type=str, help="path to huggingface repository")
 
     # TensorRT engine build
     parser.add_argument('--engine-dir', default='engine', help="Output directory for TensorRT engines")
@@ -1711,6 +1712,7 @@ def process_pipeline_args(args):
         'lora_weights': args.lora_weights,
         'framework_model_dir': args.framework_model_dir,
         'torch_inference': args.torch_inference,
+        'hf_repo_path': args.hf_repo_path,
     }
 
     kwargs_load_engine = {

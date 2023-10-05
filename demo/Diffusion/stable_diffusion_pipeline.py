@@ -76,6 +76,7 @@ class StableDiffusionPipeline:
         lora_weights=None,
         return_latents=False,
         torch_inference='',
+        hf_repo_path='',
     ):
         """
         Initializes the Diffusion pipeline.
@@ -137,6 +138,7 @@ class StableDiffusionPipeline:
         self.device = device
         self.verbose = verbose
         self.nvtx_profile = nvtx_profile
+        self.hf_repo_path = hf_repo_path
 
         self.version = version
         self.controlnet = controlnet
@@ -324,7 +326,8 @@ class StableDiffusionPipeline:
         # Load pipeline models
         models_args = {'version': self.version, 'pipeline': self.pipeline_type,
             'hf_token': self.hf_token, 'device': self.device,
-            'verbose': self.verbose, 'max_batch_size': self.max_batch_size}
+            'verbose': self.verbose, 'max_batch_size': self.max_batch_size, 
+            'hf_repo_path': self.hf_repo_path,}
 
         if 'vae_encoder' in self.stages:
             self.models['vae_encoder'] = make_VAEEncoder(**models_args)
